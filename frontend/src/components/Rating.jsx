@@ -16,7 +16,7 @@ function Rating({ score, readiness, missingFields = [] }) {
           ))}
         </ul>
       ) : (
-        <p>None</p>
+        <p>No missing information</p>
       )}
     </aside>
   )

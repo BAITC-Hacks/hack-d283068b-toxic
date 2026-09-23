@@ -15,7 +15,29 @@ const EDITABLE_FIELDS = [
   ['interaction_format', 'Interaction format'],
 ]
 
+async function saveTaskAndRecalculate(task, payload) {
+  // DEV MOCK: replace with updateTask(task.id, payload) when backend network is available
+  await new Promise((resolve) => setTimeout(resolve, 300))
+
+  const hasRequiredDemoFields = [
+    'success_criteria',
+    'contact',
+    'interaction_format',
+  ].every((field) => payload[field].trim())
+
+  return {
+    ...task,
+    ...payload,
+    score: hasRequiredDemoFields ? 100 : 65,
+    readiness: hasRequiredDemoFields ? 'priority' : 'working',
+    missing_fields: hasRequiredDemoFields
+      ? []
+      : ['success_criteria', 'contact', 'interaction_format'],
+  }
+}
+
 function TaskEditorPage({ task }) {
+  const [currentTask, setCurrentTask] = useState(task)
   const [formData, setFormData] = useState(() => {
     if (!task) return {}
 
@@ -23,6 +45,8 @@ function TaskEditorPage({ task }) {
       EDITABLE_FIELDS.map(([field]) => [field, task[field] || '']),
     )
   })
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState('')
 
   if (!task) {
     return (
@@ -38,13 +62,38 @@ function TaskEditorPage({ task }) {
     setFormData((current) => ({ ...current, [field]: value }))
   }
 
+  async function handleSave(event) {
+    event.preventDefault()
+    setError('')
+
+    const payload = Object.fromEntries(
+      EDITABLE_FIELDS.map(([field]) => [field, formData[field] || '']),
+    )
+
+    setIsSaving(true)
+
+    try {
+      const updatedTask = await saveTaskAndRecalculate(currentTask, payload)
+      setCurrentTask(updatedTask)
+      setFormData(
+        Object.fromEntries(
+          EDITABLE_FIELDS.map(([field]) => [field, updatedTask[field] || '']),
+        ),
+      )
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to save the task. Please try again.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <section className="page-placeholder">
       <p className="eyebrow">Business</p>
       <h1>Task editor</h1>
 
       <div className="editor-layout">
-        <form className="task-editor-form" onSubmit={(event) => event.preventDefault()}>
+        <form className="task-editor-form" onSubmit={handleSave}>
           {EDITABLE_FIELDS.map(([field, label]) => (
             <label key={field}>
               {label}
@@ -63,12 +112,18 @@ function TaskEditorPage({ task }) {
               )}
             </label>
           ))}
+
+          {error && <p role="alert">{error}</p>}
+
+          <button type="submit" disabled={isSaving}>
+            {isSaving ? 'Saving & Recalculating...' : 'Save & Recalculate'}
+          </button>
         </form>
 
         <Rating
-          score={task.score}
-          readiness={task.readiness}
-          missingFields={task.missing_fields}
+          score={currentTask.score}
+          readiness={currentTask.readiness}
+          missingFields={currentTask.missing_fields}
         />
       </div>
     </section>
