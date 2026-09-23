@@ -1,5 +1,25 @@
-function Rating({ score, readiness, breakdown, missingFields = [] }) {
-  return <section className="rating"><h2>Rating</h2><p>{score ?? 0} / 100</p><p>{readiness || 'draft'}</p>{breakdown && <pre>{JSON.stringify(breakdown, null, 2)}</pre>}{missingFields.length > 0 && <p>Missing: {missingFields.join(', ')}</p>}</section>
+function formatFieldName(field) {
+  return field.replace(/_/g, ' ').replace(/^./, (letter) => letter.toUpperCase())
+}
+
+function Rating({ score, readiness, missingFields = [] }) {
+  return (
+    <aside className="rating" aria-label="Task rating">
+      <h2>Rating: {score} / 100</h2>
+      <p>Status: {(readiness || '').toUpperCase()}</p>
+
+      <h3>Missing information</h3>
+      {missingFields.length > 0 ? (
+        <ul>
+          {missingFields.map((field) => (
+            <li key={field}>{formatFieldName(field)}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>None</p>
+      )}
+    </aside>
+  )
 }
 
 export default Rating

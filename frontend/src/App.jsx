@@ -9,8 +9,14 @@ import TaskEditorPage from './pages/TaskEditorPage'
 
 function App() {
   const [backendStatus, setBackendStatus] = useState('checking')
+  const [generatedTask, setGeneratedTask] = useState(null)
   const path = window.location.pathname
-  let page = <CreateTaskPage />
+  let page = <CreateTaskPage onTaskGenerated={handleTaskGenerated} />
+
+  function handleTaskGenerated(task) {
+    setGeneratedTask(task)
+    window.history.pushState({}, '', `/business/tasks/${task.id}`)
+  }
 
   useEffect(() => {
     health()
@@ -28,7 +34,7 @@ function App() {
     page = <ProposalsPage />
   }
   if (path.startsWith('/business/tasks/') && !path.endsWith('/proposals')) {
-    page = <TaskEditorPage />
+    page = <TaskEditorPage task={generatedTask} />
   }
 
   return (
