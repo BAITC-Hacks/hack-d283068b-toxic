@@ -12,6 +12,7 @@ def _connect() -> sqlite3.Connection:
     connection = sqlite3.connect(DB_PATH)
     try:
         connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys = ON")
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS tasks (
@@ -30,6 +31,21 @@ def _connect() -> sqlite3.Connection:
                 score INTEGER NOT NULL,
                 readiness TEXT NOT NULL,
                 status TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS proposals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_id INTEGER NOT NULL,
+                team_name TEXT NOT NULL,
+                idea TEXT NOT NULL,
+                plan TEXT NOT NULL,
+                deadline TEXT NOT NULL,
+                prototype_url TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
             )
             """
         )
@@ -117,3 +133,51 @@ def list_published_tasks(
         return rows
     normalized_topic = topic.strip().casefold()
     return [row for row in rows if row["topic"].strip().casefold() == normalized_topic]
+
+
+def create_proposal(task_id: int, values: dict[str, str]) -> int:
+    fields = ("task_id", "team_name", "idea", "plan", "deadline", "prototype_url")
+    proposal_values = (task_id, *(values[field] for field in fields[1:]))
+    placeholders = ", ".join("?" for _ in fields)
+    columns = ", ".join(fields)
+
+    with closing(_connect()) as connection:
+        with connection:
+            cursor = connection.execute(
+                f"INSERT INTO proposals ({columns}) VALUES ({placeholders})",
+                proposal_values,
+            )
+        if cursor.lastrowid is None:
+            raise sqlite3.DatabaseError("Proposal insert did not return an id")
+        return cursor.lastrowid
+
+
+def get_proposals(task_id: int) -> list[sqlite3.Row]:
+    with closing(_connect()) as connection:
+        return connection.execute(
+            "SELECT * FROM proposals WHERE task_id = ? ORDER BY id ASC",
+            (task_id,),
+        ).fetchall()
+
+
+def get_proposal(proposal_id: int) -> sqlite3.Row | None:
+    with closing(_connect()) as connection:
+        return connection.execute(
+            "SELECT * FROM proposals WHERE id = ?",
+            (proposal_id,),
+        ).fetchone()
+
+
+def update_proposal_status(proposal_id: int, status: str) -> sqlite3.Row | None:
+    with closing(_connect()) as connection:
+        with connection:
+            cursor = connection.execute(
+                "UPDATE proposals SET status = ? WHERE id = ?",
+                (status, proposal_id),
+            )
+            if cursor.rowcount == 0:
+                return None
+            return connection.execute(
+                "SELECT * FROM proposals WHERE id = ?",
+                (proposal_id,),
+            ).fetchone()

@@ -15,6 +15,7 @@ from app.schemas.tasks import (
     TaskCard,
     TaskResponse,
 )
+from app.schemas.proposals import ProposalCreate, ProposalResponse, ProposalStatusUpdate
 from app.services.ai_service import (
     AIConfigurationError,
     AIServiceUnavailable,
@@ -195,3 +196,56 @@ def list_tasks(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid sort value") from None
     return [_task_response_from_row(row) for row in rows]
+
+
+@app.post("/api/tasks/{task_id}/proposals", response_model=ProposalResponse)
+def create_proposal(task_id: int, payload: ProposalCreate) -> ProposalResponse:
+    try:
+        task = database.get_task(task_id)
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Could not load task") from None
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    try:
+        proposal_id = database.create_proposal(task_id, payload.model_dump())
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Could not save proposal") from None
+    return ProposalResponse(
+        id=proposal_id,
+        task_id=task_id,
+        **payload.model_dump(),
+        status="pending",
+    )
+
+
+@app.get("/api/tasks/{task_id}/proposals", response_model=list[ProposalResponse])
+def list_proposals(task_id: int) -> list[ProposalResponse]:
+    try:
+        task = database.get_task(task_id)
+        if task is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        rows = database.get_proposals(task_id)
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Could not load proposals") from None
+    return [ProposalResponse.model_validate(dict(row)) for row in rows]
+
+
+@app.patch("/api/proposals/{proposal_id}/status", response_model=ProposalResponse)
+def change_proposal_status(
+    proposal_id: int,
+    payload: ProposalStatusUpdate,
+) -> ProposalResponse:
+    if payload.status not in {"accepted", "rejected"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid proposal status. Use accepted or rejected",
+        )
+
+    try:
+        row = database.update_proposal_status(proposal_id, payload.status)
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Could not update proposal") from None
+    if row is None:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    return ProposalResponse.model_validate(dict(row))
