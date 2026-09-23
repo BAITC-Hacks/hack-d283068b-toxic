@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import Rating from '../components/Rating'
 import ProposalForm from '../components/ProposalForm'
+import { createProposal, getTask } from '../services/api'
 
 const TASK_FIELDS = [
   ['topic', 'Topic'],
@@ -14,59 +16,62 @@ const TASK_FIELDS = [
   ['interaction_format', 'Interaction format'],
 ]
 
-async function submitProposal(task, payload) {
-  // DEV MOCK: replace with createProposal(task.id, payload) when backend network is available
-  await new Promise((resolve) => setTimeout(resolve, 300))
+function TaskDetailsPage({ taskId, task }) {
+  const [currentTask, setCurrentTask] = useState(task?.id === taskId ? task : null)
+  const [isLoading, setIsLoading] = useState(!task || task.id !== taskId)
+  const [error, setError] = useState('')
 
-  return {
-    id: 1,
-    task_id: task.id,
-    team_name: payload.team_name,
-    idea: payload.idea,
-    plan: payload.plan,
-    deadline: payload.deadline,
-    prototype_url: payload.prototype_url,
-    status: 'pending',
-  }
-}
+  useEffect(() => {
+    if (task?.id === taskId) return
+    let active = true
+    getTask(taskId)
+      .then((loadedTask) => {
+        if (!active) return
+        setCurrentTask(loadedTask)
+        setIsLoading(false)
+      })
+      .catch((loadError) => {
+        if (!active) return
+        setError(loadError.message || 'Unable to load the task.')
+        setIsLoading(false)
+      })
+    return () => { active = false }
+  }, [taskId, task])
 
-function TaskDetailsPage({ task, onProposalSubmitted }) {
-  if (!task) {
+  if (isLoading || !currentTask) {
     return (
       <section className="page-placeholder">
         <p className="eyebrow">Student</p>
         <h1>Task details</h1>
-        <p>Task data is unavailable. Open a task from the Catalog.</p>
+        <p>{isLoading ? 'Loading task...' : error || 'Task data is unavailable.'}</p>
       </section>
     )
   }
 
   async function handleSubmitProposal(payload) {
-    const proposal = await submitProposal(task, payload)
-    onProposalSubmitted?.(proposal)
-    return proposal
+    return createProposal(currentTask.id, payload)
   }
 
   return (
     <section className="page-placeholder">
       <p className="eyebrow">Student</p>
-      <h1>{task.title}</h1>
-      <p>Status: {task.status}</p>
+      <h1>{currentTask.title}</h1>
+      <p>Status: {currentTask.status}</p>
 
       <div className="details-layout">
         <dl className="task-details">
           {TASK_FIELDS.map(([field, label]) => (
             <div key={field}>
               <dt>{label}</dt>
-              <dd>{task[field] || 'Not provided'}</dd>
+              <dd>{currentTask[field] || 'Not provided'}</dd>
             </div>
           ))}
         </dl>
 
         <Rating
-          score={task.score}
-          readiness={task.readiness}
-          missingFields={task.missing_fields}
+          score={currentTask.score}
+          readiness={currentTask.readiness}
+          missingFields={currentTask.missing_fields}
         />
       </div>
 

@@ -41,8 +41,8 @@ function ProposalForm({ onSubmitProposal }) {
     setIsSubmitting(true)
 
     try {
-      await onSubmitProposal(payload)
-      setSuccess('Proposal submitted successfully')
+      const proposal = await onSubmitProposal(payload)
+      setSuccess(`Proposal #${proposal.id} for task #${proposal.task_id}: ${proposal.status}`)
       setFormData(INITIAL_FORM)
     } catch (submitError) {
       setError(submitError.message || 'Unable to submit the proposal. Please try again.')

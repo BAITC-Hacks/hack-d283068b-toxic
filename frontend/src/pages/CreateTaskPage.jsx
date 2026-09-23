@@ -1,73 +1,9 @@
 import { useState } from 'react'
 import QuestionForm from '../components/QuestionForm'
-import { analyzeTask } from '../services/api'
+import { analyzeTask, createTask } from '../services/api'
 
 function formatFieldName(field) {
   return field.replace(/_/g, ' ').replace(/^./, (letter) => letter.toUpperCase())
-}
-
-// DEV MOCK: remove when backend network connection is available
-const DEV_MOCK_ANALYSIS_RESPONSE = {
-  missing_fields: [
-    'users',
-    'data_materials',
-    'expected_result',
-  ],
-  questions: [
-    {
-      id: 'q1',
-      field: 'users',
-      question: 'Кто будет основным пользователем решения?',
-    },
-    {
-      id: 'q2',
-      field: 'data_materials',
-      question: 'Какие данные или материалы доступны для решения задачи?',
-    },
-    {
-      id: 'q3',
-      field: 'expected_result',
-      question: 'Какой конкретный результат бизнес ожидает получить?',
-    },
-  ],
-}
-
-function isNetworkError(error) {
-  if (!(error instanceof TypeError)) return false
-
-  return /failed to fetch|networkerror|network request failed|load failed/i.test(
-    error.message,
-  )
-}
-
-// DEV MOCK: replace with createTask(payload) when backend network is available
-const DEV_MOCK_TASK = {
-  id: 1,
-  title: 'AI-анализ практических заданий',
-  topic: 'Education',
-  context: 'Тестовый контекст',
-  need: 'Тестовая потребность',
-  users: 'Студенты',
-  data_materials: 'Примеры практических заданий',
-  constraints: '',
-  expected_result: 'Работающий прототип',
-  success_criteria: '',
-  contact: '',
-  interaction_format: '',
-  score: 65,
-  readiness: 'working',
-  missing_fields: [
-    'success_criteria',
-    'contact',
-    'interaction_format',
-  ],
-  status: 'draft',
-}
-
-async function generateTaskCard(payload) {
-  void payload
-  await new Promise((resolve) => setTimeout(resolve, 300))
-  return { ...DEV_MOCK_TASK, missing_fields: [...DEV_MOCK_TASK.missing_fields] }
 }
 
 function CreateTaskPage({ onTaskGenerated }) {
@@ -92,15 +28,7 @@ function CreateTaskPage({ onTaskGenerated }) {
     setIsAnalyzing(true)
 
     try {
-      let response
-
-      try {
-        response = await analyzeTask({ description, topic })
-      } catch (requestError) {
-        if (!isNetworkError(requestError)) throw requestError
-
-        response = DEV_MOCK_ANALYSIS_RESPONSE
-      }
+      const response = await analyzeTask({ description, topic })
 
       setMissingFields(Array.isArray(response?.missing_fields) ? response.missing_fields : [])
       setQuestions(Array.isArray(response?.questions) ? response.questions : [])
@@ -137,10 +65,10 @@ function CreateTaskPage({ onTaskGenerated }) {
     setIsGenerating(true)
 
     try {
-      const task = await generateTaskCard(payload)
+      const task = await createTask(payload)
       onTaskGenerated?.(task)
-    } catch {
-      setError('Unable to generate the Task Card. Please try again.')
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to generate the Task Card. Please try again.')
     } finally {
       setIsGenerating(false)
     }
@@ -154,14 +82,24 @@ function CreateTaskPage({ onTaskGenerated }) {
       <form onSubmit={handleAnalyze}>
         <label>
           Topic
-          <input value={topic} onChange={(event) => setTopic(event.target.value)} />
+          <input value={topic} onChange={(event) => {
+            setTopic(event.target.value)
+            setQuestions([])
+            setMissingFields([])
+            setAnswers([])
+          }} />
         </label>
 
         <label>
           Description
           <textarea
             value={description}
-            onChange={(event) => setDescription(event.target.value)}
+            onChange={(event) => {
+              setDescription(event.target.value)
+              setQuestions([])
+              setMissingFields([])
+              setAnswers([])
+            }}
             placeholder="Describe the business problem"
           />
         </label>

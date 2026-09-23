@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Rating from '../components/Rating'
+import { getTask, publishTask, updateTask } from '../services/api'
 
 const EDITABLE_FIELDS = [
   ['title', 'Title'],
@@ -15,52 +16,44 @@ const EDITABLE_FIELDS = [
   ['interaction_format', 'Interaction format'],
 ]
 
-async function saveTaskAndRecalculate(task, payload) {
-  // DEV MOCK: replace with updateTask(task.id, payload) when backend network is available
-  await new Promise((resolve) => setTimeout(resolve, 300))
-
-  const hasRequiredDemoFields = [
-    'success_criteria',
-    'contact',
-    'interaction_format',
-  ].every((field) => payload[field].trim())
-
-  return {
-    ...task,
-    ...payload,
-    score: hasRequiredDemoFields ? 100 : 65,
-    readiness: hasRequiredDemoFields ? 'priority' : 'working',
-    missing_fields: hasRequiredDemoFields
-      ? []
-      : ['success_criteria', 'contact', 'interaction_format'],
-  }
+function fieldsFromTask(task) {
+  return Object.fromEntries(
+    EDITABLE_FIELDS.map(([field]) => [field, task?.[field] || '']),
+  )
 }
 
-async function publishCurrentTask(task) {
-  // DEV MOCK: replace with publishTask(task.id) when backend network is available
-  await new Promise((resolve) => setTimeout(resolve, 300))
-  return { ...task, status: 'published' }
-}
-
-function TaskEditorPage({ task, onTaskPublished, onViewProposals }) {
-  const [currentTask, setCurrentTask] = useState(task)
-  const [formData, setFormData] = useState(() => {
-    if (!task) return {}
-
-    return Object.fromEntries(
-      EDITABLE_FIELDS.map(([field]) => [field, task[field] || '']),
-    )
-  })
+function TaskEditorPage({ taskId, task, onTaskUpdated, onTaskPublished, onViewProposals }) {
+  const [currentTask, setCurrentTask] = useState(task?.id === taskId ? task : null)
+  const [formData, setFormData] = useState(() => fieldsFromTask(task?.id === taskId ? task : null))
+  const [isLoading, setIsLoading] = useState(!task || task.id !== taskId)
   const [isSaving, setIsSaving] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [error, setError] = useState('')
 
-  if (!task) {
+  useEffect(() => {
+    if (task?.id === taskId) return
+    let active = true
+    getTask(taskId)
+      .then((loadedTask) => {
+        if (!active) return
+        setCurrentTask(loadedTask)
+        setFormData(fieldsFromTask(loadedTask))
+        setIsLoading(false)
+      })
+      .catch((loadError) => {
+        if (!active) return
+        setError(loadError.message || 'Unable to load the task.')
+        setIsLoading(false)
+      })
+    return () => { active = false }
+  }, [taskId, task])
+
+  if (isLoading || !currentTask) {
     return (
       <section className="page-placeholder">
         <p className="eyebrow">Business</p>
         <h1>Task editor</h1>
-        <p>Task data is unavailable. Generate a Task Card first.</p>
+        <p>{isLoading ? 'Loading task...' : error || 'Task data is unavailable.'}</p>
       </section>
     )
   }
@@ -80,13 +73,10 @@ function TaskEditorPage({ task, onTaskPublished, onViewProposals }) {
     setIsSaving(true)
 
     try {
-      const updatedTask = await saveTaskAndRecalculate(currentTask, payload)
+      const updatedTask = await updateTask(currentTask.id, payload)
       setCurrentTask(updatedTask)
-      setFormData(
-        Object.fromEntries(
-          EDITABLE_FIELDS.map(([field]) => [field, updatedTask[field] || '']),
-        ),
-      )
+      setFormData(fieldsFromTask(updatedTask))
+      onTaskUpdated?.(updatedTask)
     } catch (saveError) {
       setError(saveError.message || 'Unable to save the task. Please try again.')
     } finally {
@@ -99,7 +89,7 @@ function TaskEditorPage({ task, onTaskPublished, onViewProposals }) {
     setIsPublishing(true)
 
     try {
-      const publishedTask = await publishCurrentTask(currentTask)
+      const publishedTask = await publishTask(currentTask.id)
       setCurrentTask(publishedTask)
       onTaskPublished?.(publishedTask)
     } catch (publishError) {

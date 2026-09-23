@@ -13,13 +13,21 @@ async function parseJson(response) {
 }
 
 async function request(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  })
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    })
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error('Cannot connect to backend at http://localhost:8000. Check that it is running.')
+    }
+    throw error
+  }
 
   const data = await parseJson(response)
 

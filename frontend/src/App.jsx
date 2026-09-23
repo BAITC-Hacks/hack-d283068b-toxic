@@ -9,12 +9,11 @@ import TaskEditorPage from './pages/TaskEditorPage'
 
 function App() {
   const [backendStatus, setBackendStatus] = useState('checking')
-  const [generatedTask, setGeneratedTask] = useState(null)
-  const [publishedTasks, setPublishedTasks] = useState([])
   const [selectedTask, setSelectedTask] = useState(null)
-  const [businessTask, setBusinessTask] = useState(null)
-  const [submittedProposals, setSubmittedProposals] = useState([])
   const [path, setPath] = useState(window.location.pathname)
+  const detailsMatch = path.match(/^\/tasks\/(\d+)\/?$/)
+  const proposalsMatch = path.match(/^\/business\/tasks\/(\d+)\/proposals\/?$/)
+  const editorMatch = path.match(/^\/business\/tasks\/(\d+)\/?$/)
   let page = <CreateTaskPage onTaskGenerated={handleTaskGenerated} />
 
   function navigate(nextPath) {
@@ -23,18 +22,12 @@ function App() {
   }
 
   function handleTaskGenerated(task) {
-    setGeneratedTask(task)
-    setBusinessTask(task)
+    setSelectedTask(task)
     navigate(`/business/tasks/${task.id}`)
   }
 
   function handleTaskPublished(task) {
-    setGeneratedTask(task)
-    setPublishedTasks((current) => [
-      task,
-      ...current.filter((item) => item.id !== task.id),
-    ])
-    setBusinessTask(task)
+    setSelectedTask(task)
     navigate('/catalog')
   }
 
@@ -43,16 +36,8 @@ function App() {
     navigate(`/tasks/${task.id}`)
   }
 
-  function handleProposalSubmitted(proposal) {
-    setSubmittedProposals((current) => [
-      proposal,
-      ...current.filter((item) => item.id !== proposal.id),
-    ])
-    setBusinessTask(selectedTask)
-  }
-
   function handleViewProposals(task) {
-    setBusinessTask(task)
+    setSelectedTask(task)
     navigate(`/business/tasks/${task.id}/proposals`)
   }
 
@@ -76,28 +61,36 @@ function App() {
   }, [])
 
   if (path === '/catalog') {
-    page = <CatalogPage publishedTasks={publishedTasks} onTaskOpen={handleTaskOpen} />
+    page = <CatalogPage onTaskOpen={handleTaskOpen} />
   }
-  if (path.startsWith('/tasks/')) {
+  if (detailsMatch) {
+    const taskId = Number(detailsMatch[1])
     page = (
       <TaskDetailsPage
-        task={selectedTask}
-        onProposalSubmitted={handleProposalSubmitted}
+        key={`details-${taskId}`}
+        taskId={taskId}
+        task={selectedTask?.id === taskId ? selectedTask : null}
       />
     )
   }
-  if (path.startsWith('/business/tasks/') && path.endsWith('/proposals')) {
+  if (proposalsMatch) {
+    const taskId = Number(proposalsMatch[1])
     page = (
       <ProposalsPage
-        task={businessTask || generatedTask || selectedTask}
-        submittedProposals={submittedProposals}
+        key={`proposals-${taskId}`}
+        taskId={taskId}
+        task={selectedTask?.id === taskId ? selectedTask : null}
       />
     )
   }
-  if (path.startsWith('/business/tasks/') && !path.endsWith('/proposals')) {
+  if (editorMatch) {
+    const taskId = Number(editorMatch[1])
     page = (
       <TaskEditorPage
-        task={generatedTask}
+        key={`editor-${taskId}`}
+        taskId={taskId}
+        task={selectedTask?.id === taskId ? selectedTask : null}
+        onTaskUpdated={setSelectedTask}
         onTaskPublished={handleTaskPublished}
         onViewProposals={handleViewProposals}
       />
