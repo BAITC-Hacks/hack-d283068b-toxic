@@ -151,4 +151,4 @@ class TaskResponse(TaskCard):
     readiness: Readiness
     breakdown: Breakdown
     missing_fields: list[TaskField]
-    status: Literal["draft"]
+    status: Literal["draft", "published"]

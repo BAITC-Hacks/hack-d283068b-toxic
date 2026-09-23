@@ -71,3 +71,49 @@ def update_task(task_id: int, card: TaskCard, rating: RatingResult) -> bool:
                 values,
             )
         return cursor.rowcount > 0
+
+
+def get_task(task_id: int) -> sqlite3.Row | None:
+    with closing(_connect()) as connection:
+        return connection.execute(
+            "SELECT * FROM tasks WHERE id = ?",
+            (task_id,),
+        ).fetchone()
+
+
+def publish_task(task_id: int) -> sqlite3.Row | None:
+    with closing(_connect()) as connection:
+        with connection:
+            cursor = connection.execute(
+                "UPDATE tasks SET status = 'published' WHERE id = ?",
+                (task_id,),
+            )
+            if cursor.rowcount == 0:
+                return None
+            return connection.execute(
+                "SELECT * FROM tasks WHERE id = ?",
+                (task_id,),
+            ).fetchone()
+
+
+def list_published_tasks(
+    *, topic: str | None, readiness: str | None, sort: str
+) -> list[sqlite3.Row]:
+    sort_order = {"rating_desc": "DESC", "rating_asc": "ASC"}.get(sort)
+    if sort_order is None:
+        raise ValueError("Unsupported task sort")
+
+    query = "SELECT * FROM tasks WHERE status = 'published'"
+    parameters: list[str] = []
+    if readiness is not None:
+        query += " AND readiness = ?"
+        parameters.append(readiness)
+    query += f" ORDER BY score {sort_order}, id ASC"
+
+    with closing(_connect()) as connection:
+        rows = connection.execute(query, parameters).fetchall()
+
+    if topic is None:
+        return rows
+    normalized_topic = topic.strip().casefold()
+    return [row for row in rows if row["topic"].strip().casefold() == normalized_topic]

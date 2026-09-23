@@ -76,12 +76,27 @@ def analyze_task(payload: AnalyzeRequest) -> AnalyzeResponse:
     )
 
 
-def _task_response(task_id: int, card: TaskCard, rating: RatingResult) -> TaskResponse:
+def _task_response(
+    task_id: int,
+    card: TaskCard,
+    rating: RatingResult,
+    status: str = "draft",
+) -> TaskResponse:
     return TaskResponse(
         id=task_id,
         **card.model_dump(),
         **rating.model_dump(),
-        status="draft",
+        status=status,
+    )
+
+
+def _task_response_from_row(row: sqlite3.Row) -> TaskResponse:
+    card = TaskCard.model_validate({field: row[field] for field in TaskCard.model_fields})
+    return _task_response(
+        task_id=row["id"],
+        card=card,
+        rating=calculate_rating(card),
+        status=row["status"],
     )
 
 
@@ -124,4 +139,59 @@ def edit_task(task_id: int, payload: TaskCard) -> TaskResponse:
 
     if not updated:
         raise HTTPException(status_code=404, detail="Task not found")
-    return _task_response(task_id, payload, rating)
+    try:
+        row = database.get_task(task_id)
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Could not load task") from None
+    if row is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return _task_response_from_row(row)
+
+
+@app.post("/api/tasks/{task_id}/publish", response_model=TaskResponse)
+def publish_task(task_id: int) -> TaskResponse:
+    try:
+        row = database.publish_task(task_id)
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Could not publish task") from None
+    if row is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return _task_response_from_row(row)
+
+
+@app.get("/api/tasks/{task_id}", response_model=TaskResponse)
+def get_task(task_id: int) -> TaskResponse:
+    try:
+        row = database.get_task(task_id)
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Could not load task") from None
+    if row is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return _task_response_from_row(row)
+
+
+@app.get("/api/tasks", response_model=list[TaskResponse])
+def list_tasks(
+    topic: str | None = None,
+    readiness: str | None = None,
+    sort: str = "rating_desc",
+) -> list[TaskResponse]:
+    allowed_readiness = {"draft", "working", "ready", "priority"}
+    if readiness is not None and readiness not in allowed_readiness:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid readiness value. Use draft, working, ready, or priority",
+        )
+    if sort not in {"rating_desc", "rating_asc"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid sort value. Use rating_desc or rating_asc",
+        )
+
+    try:
+        rows = database.list_published_tasks(topic=topic, readiness=readiness, sort=sort)
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Could not load catalog") from None
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid sort value") from None
+    return [_task_response_from_row(row) for row in rows]
