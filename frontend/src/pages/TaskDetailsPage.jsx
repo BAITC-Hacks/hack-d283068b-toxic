@@ -1,4 +1,5 @@
 import Rating from '../components/Rating'
+import ProposalForm from '../components/ProposalForm'
 
 const TASK_FIELDS = [
   ['topic', 'Topic'],
@@ -13,7 +14,23 @@ const TASK_FIELDS = [
   ['interaction_format', 'Interaction format'],
 ]
 
-function TaskDetailsPage({ task }) {
+async function submitProposal(task, payload) {
+  // DEV MOCK: replace with createProposal(task.id, payload) when backend network is available
+  await new Promise((resolve) => setTimeout(resolve, 300))
+
+  return {
+    id: 1,
+    task_id: task.id,
+    team_name: payload.team_name,
+    idea: payload.idea,
+    plan: payload.plan,
+    deadline: payload.deadline,
+    prototype_url: payload.prototype_url,
+    status: 'pending',
+  }
+}
+
+function TaskDetailsPage({ task, onProposalSubmitted }) {
   if (!task) {
     return (
       <section className="page-placeholder">
@@ -22,6 +39,12 @@ function TaskDetailsPage({ task }) {
         <p>Task data is unavailable. Open a task from the Catalog.</p>
       </section>
     )
+  }
+
+  async function handleSubmitProposal(payload) {
+    const proposal = await submitProposal(task, payload)
+    onProposalSubmitted?.(proposal)
+    return proposal
   }
 
   return (
@@ -46,6 +69,11 @@ function TaskDetailsPage({ task }) {
           missingFields={task.missing_fields}
         />
       </div>
+
+      <section className="proposal-section" aria-labelledby="proposal-title">
+        <h2 id="proposal-title">Submit proposal</h2>
+        <ProposalForm onSubmitProposal={handleSubmitProposal} />
+      </section>
     </section>
   )
 }

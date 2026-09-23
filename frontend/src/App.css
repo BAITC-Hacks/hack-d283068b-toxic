@@ -28,4 +28,16 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .task-details div { padding: 14px 0; border-bottom: 1px solid #e3e8f0; }
 .task-details dt { font-weight: 700; }
 .task-details dd { margin: 6px 0 0; white-space: pre-wrap; }
+.proposal-section { margin-top: 40px; padding-top: 32px; border-top: 1px solid #e3e8f0; }
+.proposal-form { max-width: 680px; }
+.proposal-list { display: grid; gap: 16px; margin-top: 24px; }
+.proposal-card { padding: 24px; border: 1px solid #e3e8f0; border-radius: 12px; background: #fff; }
+.proposal-card h2, .proposal-card h3 { margin-top: 0; }
+.proposal-card-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.proposal-status { padding: 5px 9px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; background: #eef1f6; }
+.proposal-status-accepted { color: #166534; background: #dcfce7; }
+.proposal-status-rejected { color: #991b1b; background: #fee2e2; }
+.proposal-plan { white-space: pre-wrap; }
+.proposal-actions { display: flex; gap: 10px; margin-top: 18px; }
+.secondary-button { color: #344054; background: #e9edf5; }
 @media (max-width: 760px) { .editor-layout, .details-layout, .catalog-filters, .task-grid { grid-template-columns: 1fr; } .rating { position: static; } }

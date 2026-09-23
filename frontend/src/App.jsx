@@ -12,12 +12,20 @@ function App() {
   const [generatedTask, setGeneratedTask] = useState(null)
   const [publishedTasks, setPublishedTasks] = useState([])
   const [selectedTask, setSelectedTask] = useState(null)
-  const path = window.location.pathname
+  const [businessTask, setBusinessTask] = useState(null)
+  const [submittedProposals, setSubmittedProposals] = useState([])
+  const [path, setPath] = useState(window.location.pathname)
   let page = <CreateTaskPage onTaskGenerated={handleTaskGenerated} />
+
+  function navigate(nextPath) {
+    window.history.pushState({}, '', nextPath)
+    setPath(nextPath)
+  }
 
   function handleTaskGenerated(task) {
     setGeneratedTask(task)
-    window.history.pushState({}, '', `/business/tasks/${task.id}`)
+    setBusinessTask(task)
+    navigate(`/business/tasks/${task.id}`)
   }
 
   function handleTaskPublished(task) {
@@ -26,12 +34,26 @@ function App() {
       task,
       ...current.filter((item) => item.id !== task.id),
     ])
-    window.history.pushState({}, '', '/catalog')
+    setBusinessTask(task)
+    navigate('/catalog')
   }
 
   function handleTaskOpen(task) {
     setSelectedTask(task)
-    window.history.pushState({}, '', `/tasks/${task.id}`)
+    navigate(`/tasks/${task.id}`)
+  }
+
+  function handleProposalSubmitted(proposal) {
+    setSubmittedProposals((current) => [
+      proposal,
+      ...current.filter((item) => item.id !== proposal.id),
+    ])
+    setBusinessTask(selectedTask)
+  }
+
+  function handleViewProposals(task) {
+    setBusinessTask(task)
+    navigate(`/business/tasks/${task.id}/proposals`)
   }
 
   useEffect(() => {
@@ -44,15 +66,42 @@ function App() {
       })
   }, [])
 
+  useEffect(() => {
+    function handlePopState() {
+      setPath(window.location.pathname)
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
   if (path === '/catalog') {
     page = <CatalogPage publishedTasks={publishedTasks} onTaskOpen={handleTaskOpen} />
   }
-  if (path.startsWith('/tasks/')) page = <TaskDetailsPage task={selectedTask} />
+  if (path.startsWith('/tasks/')) {
+    page = (
+      <TaskDetailsPage
+        task={selectedTask}
+        onProposalSubmitted={handleProposalSubmitted}
+      />
+    )
+  }
   if (path.startsWith('/business/tasks/') && path.endsWith('/proposals')) {
-    page = <ProposalsPage />
+    page = (
+      <ProposalsPage
+        task={businessTask || generatedTask || selectedTask}
+        submittedProposals={submittedProposals}
+      />
+    )
   }
   if (path.startsWith('/business/tasks/') && !path.endsWith('/proposals')) {
-    page = <TaskEditorPage task={generatedTask} onTaskPublished={handleTaskPublished} />
+    page = (
+      <TaskEditorPage
+        task={generatedTask}
+        onTaskPublished={handleTaskPublished}
+        onViewProposals={handleViewProposals}
+      />
+    )
   }
 
   return (

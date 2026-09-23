@@ -42,7 +42,7 @@ async function publishCurrentTask(task) {
   return { ...task, status: 'published' }
 }
 
-function TaskEditorPage({ task, onTaskPublished }) {
+function TaskEditorPage({ task, onTaskPublished, onViewProposals }) {
   const [currentTask, setCurrentTask] = useState(task)
   const [formData, setFormData] = useState(() => {
     if (!task) return {}
@@ -142,6 +142,13 @@ function TaskEditorPage({ task, onTaskPublished }) {
           </button>
           <button type="button" onClick={handlePublish} disabled={isPublishing || isSaving}>
             {isPublishing ? 'Publishing...' : 'Publish'}
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewProposals?.(currentTask)}
+            disabled={isPublishing || isSaving}
+          >
+            View Proposals
           </button>
         </form>
 
