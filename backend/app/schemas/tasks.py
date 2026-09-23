@@ -17,6 +17,20 @@ TaskField = Literal[
     "interaction_format",
 ]
 
+TASK_CARD_FIELDS = (
+    "title",
+    "topic",
+    "context",
+    "need",
+    "users",
+    "data_materials",
+    "constraints",
+    "expected_result",
+    "success_criteria",
+    "contact",
+    "interaction_format",
+)
+
 
 class AnalyzeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -65,3 +79,76 @@ class Question(BaseModel):
 class AnalyzeResponse(BaseModel):
     missing_fields: list[TaskField]
     questions: list[Question] = Field(min_length=3)
+
+
+class Answer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    field: TaskField
+    answer: str
+
+
+class CreateTaskRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    draft: str
+    topic: str
+    answers: list[Answer]
+
+
+class TaskCard(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+    topic: str
+    context: str
+    need: str
+    users: str
+    data_materials: str
+    constraints: str
+    expected_result: str
+    success_criteria: str
+    contact: str
+    interaction_format: str
+
+    @field_validator(*TASK_CARD_FIELDS)
+    @classmethod
+    def trim_field(cls, value: str) -> str:
+        return value.strip()
+
+    @model_validator(mode="after")
+    def required_fields_must_be_present(self) -> "TaskCard":
+        if not self.title:
+            raise ValueError("Title is required")
+        if not self.topic:
+            raise ValueError("Topic is required")
+        return self
+
+
+class Breakdown(BaseModel):
+    context_need: int
+    data_materials: int
+    expected_result: int
+    success_criteria: int
+    constraints: int
+    users: int
+    business_connection: int
+
+
+Readiness = Literal["draft", "working", "ready", "priority"]
+
+
+class RatingResult(BaseModel):
+    score: int
+    readiness: Readiness
+    breakdown: Breakdown
+    missing_fields: list[TaskField]
+
+
+class TaskResponse(TaskCard):
+    id: int
+    score: int
+    readiness: Readiness
+    breakdown: Breakdown
+    missing_fields: list[TaskField]
+    status: Literal["draft"]
