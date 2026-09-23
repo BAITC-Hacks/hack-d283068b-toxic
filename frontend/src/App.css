@@ -10,11 +10,22 @@ nav a { text-decoration: none; color: #526078; }
 h1 { margin: 0 0 12px; font-size: 2.25rem; }
 .task-card, .rating { padding: 20px; border: 1px solid #e3e8f0; border-radius: 12px; }
 label { display: grid; gap: 6px; margin: 12px 0; }
-input, textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
+input, textarea, select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: inherit; }
 textarea { min-height: 90px; resize: vertical; }
 button { padding: 10px 16px; border: 0; border-radius: 8px; color: #fff; background: #596ddf; cursor: pointer; }
 button:disabled { opacity: 0.6; cursor: wait; }
+.task-editor-form button + button { margin-left: 10px; }
 .editor-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 24px; align-items: start; }
 .rating { position: sticky; top: 24px; background: #f8faff; }
 .rating h2 { margin-top: 0; }
-@media (max-width: 760px) { .editor-layout { grid-template-columns: 1fr; } .rating { position: static; } }
+.catalog-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 24px 0; }
+.task-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.task-card { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; background: #fff; }
+.task-card h2, .task-card p { margin: 0; }
+.task-card button { margin-top: auto; }
+.details-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 24px; align-items: start; }
+.task-details { margin: 0; }
+.task-details div { padding: 14px 0; border-bottom: 1px solid #e3e8f0; }
+.task-details dt { font-weight: 700; }
+.task-details dd { margin: 6px 0 0; white-space: pre-wrap; }
+@media (max-width: 760px) { .editor-layout, .details-layout, .catalog-filters, .task-grid { grid-template-columns: 1fr; } .rating { position: static; } }

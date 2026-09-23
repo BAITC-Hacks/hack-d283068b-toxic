@@ -10,12 +10,28 @@ import TaskEditorPage from './pages/TaskEditorPage'
 function App() {
   const [backendStatus, setBackendStatus] = useState('checking')
   const [generatedTask, setGeneratedTask] = useState(null)
+  const [publishedTasks, setPublishedTasks] = useState([])
+  const [selectedTask, setSelectedTask] = useState(null)
   const path = window.location.pathname
   let page = <CreateTaskPage onTaskGenerated={handleTaskGenerated} />
 
   function handleTaskGenerated(task) {
     setGeneratedTask(task)
     window.history.pushState({}, '', `/business/tasks/${task.id}`)
+  }
+
+  function handleTaskPublished(task) {
+    setGeneratedTask(task)
+    setPublishedTasks((current) => [
+      task,
+      ...current.filter((item) => item.id !== task.id),
+    ])
+    window.history.pushState({}, '', '/catalog')
+  }
+
+  function handleTaskOpen(task) {
+    setSelectedTask(task)
+    window.history.pushState({}, '', `/tasks/${task.id}`)
   }
 
   useEffect(() => {
@@ -28,13 +44,15 @@ function App() {
       })
   }, [])
 
-  if (path === '/catalog') page = <CatalogPage />
-  if (path.startsWith('/tasks/')) page = <TaskDetailsPage />
+  if (path === '/catalog') {
+    page = <CatalogPage publishedTasks={publishedTasks} onTaskOpen={handleTaskOpen} />
+  }
+  if (path.startsWith('/tasks/')) page = <TaskDetailsPage task={selectedTask} />
   if (path.startsWith('/business/tasks/') && path.endsWith('/proposals')) {
     page = <ProposalsPage />
   }
   if (path.startsWith('/business/tasks/') && !path.endsWith('/proposals')) {
-    page = <TaskEditorPage task={generatedTask} />
+    page = <TaskEditorPage task={generatedTask} onTaskPublished={handleTaskPublished} />
   }
 
   return (

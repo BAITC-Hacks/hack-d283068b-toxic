@@ -36,7 +36,13 @@ async function saveTaskAndRecalculate(task, payload) {
   }
 }
 
-function TaskEditorPage({ task }) {
+async function publishCurrentTask(task) {
+  // DEV MOCK: replace with publishTask(task.id) when backend network is available
+  await new Promise((resolve) => setTimeout(resolve, 300))
+  return { ...task, status: 'published' }
+}
+
+function TaskEditorPage({ task, onTaskPublished }) {
   const [currentTask, setCurrentTask] = useState(task)
   const [formData, setFormData] = useState(() => {
     if (!task) return {}
@@ -46,6 +52,7 @@ function TaskEditorPage({ task }) {
     )
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
   const [error, setError] = useState('')
 
   if (!task) {
@@ -87,6 +94,21 @@ function TaskEditorPage({ task }) {
     }
   }
 
+  async function handlePublish() {
+    setError('')
+    setIsPublishing(true)
+
+    try {
+      const publishedTask = await publishCurrentTask(currentTask)
+      setCurrentTask(publishedTask)
+      onTaskPublished?.(publishedTask)
+    } catch (publishError) {
+      setError(publishError.message || 'Unable to publish the task. Please try again.')
+    } finally {
+      setIsPublishing(false)
+    }
+  }
+
   return (
     <section className="page-placeholder">
       <p className="eyebrow">Business</p>
@@ -115,8 +137,11 @@ function TaskEditorPage({ task }) {
 
           {error && <p role="alert">{error}</p>}
 
-          <button type="submit" disabled={isSaving}>
+          <button type="submit" disabled={isSaving || isPublishing}>
             {isSaving ? 'Saving & Recalculating...' : 'Save & Recalculate'}
+          </button>
+          <button type="button" onClick={handlePublish} disabled={isPublishing || isSaving}>
+            {isPublishing ? 'Publishing...' : 'Publish'}
           </button>
         </form>
 
